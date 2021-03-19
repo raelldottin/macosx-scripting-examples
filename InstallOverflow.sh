@@ -2,6 +2,12 @@
 
 # A quick prototype for automating overflow software installs on macos
 
+# Or we can use overflow cask in homebrew
+# First install Homebrew if it's not already installed
+# Security considers must be consider if HomeBrew is not already being used.
+# brew install --cask protoio-overflow
+#
+
 # Todo List:
 # Figure out how to determine the download link dynamically
 # Add error checking for each command with failbacks or clean up routines
@@ -18,7 +24,7 @@
 # Do we re-attempt file download if the download fails or give up one try and declare failure?
 curl -s 'https://app-updates.overflow.io/packages/updates/osx_64/01800abc7f858990a2f4267e811d430c48f9469b/Overflow-1.16.2.dmg' -o /tmp/download.dmg
 
-# How do when know where the damage is attached, will the volume always have the same name?
+# How do when know where the dmg file is attached, will the volume always have the same name?
 hdiutil attach /tmp/download.dmg --nobrowse --quiet
 
 # Perform a check to see if the version of the app inside the dmg matches the installed app, then clean up and exit if it does
