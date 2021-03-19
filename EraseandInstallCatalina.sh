@@ -5,14 +5,14 @@ download_os_installer () {
 	then
 		logger -is "Installer macOS Catalina.app found."
 	else
-		logger -is "Attemping to download the macOS installer from Apple Software Servers: /usr/sbin/softwareupdate --fetch-full-installer --full-installer-version 10.15.3 2>/dev/null"
-		/usr/sbin/softwareupdate --fetch-full-installer --full-installer-version 10.15.3 2>/dev/null
+		logger -is "Attemping to download the macOS installer from Apple Software Servers: /usr/sbin/softwareupdate --fetch-full-installer --full-installer-version 10.15.7 2>/dev/null"
+		/usr/sbin/softwareupdate --fetch-full-installer --full-installer-version 10.15.7 2>/dev/null
 		sleep 30
 		if [[ -d "/Install macOS Catalina.app" ]] || [[ -d "/Applications/Install macOS Catalina.app" ]] || [[ -d "/Users/Shared/Previously Relocated Items/Security/Install macOS Catalina.app" ]]
 		then
 			logger -is "Installer macOS Catalina.app found."
    		else 
-			logger -is "Fail downloading installer using softwareupdate: /usr/sbin/softwareupdate --fetch-full-installer --full-installer-version 10.15.3 2>/dev/null"
+			logger -is "Fail downloading installer using softwareupdate: /usr/sbin/softwareupdate --fetch-full-installer --full-installer-version 10.15.7 2>/dev/null"
         		logger -is "Attempting to download the installer from Jamf Cloud."
         		/usr/local/jamf/bin/jamf policy -event osinstaller
 			until [[ $? == 0 ]]
