@@ -1,33 +1,32 @@
 #!/bin/bash
 
-# A quick prototype for automating overflow software installs on macos
+# A quick prototype for automating overflow software installs on macOS
 
-# Or we can use overflow cask in homebrew
-# First install Homebrew if it's not already installed
-# Security considers must be consider if HomeBrew is not already being used.
+# Or we can use overflow cask in Homebrew
 # brew install --cask protoio-overflow
 #
+
 
 # Todo List:
 # Figure out how to determine the download link dynamically
 # Add error checking for each command with failbacks or clean up routines
 # Include logging of the installation process
 
-# Script Requirements: bash, curl, hdiutil, pkill, rm, cp, chown, xattr, python (no specific version required), (root priviledges)
+# Script Requirements: bash, curl, hdiutil, pkill, rm, cp, chown, xattr, python (no specific version required), (root privileges)
 # we can write a routine to make sure the target system has the required utilities before beginning
 
 
-#We can automated the file download using Google Chrome using Puppeteer
+#We can automate the file download using Google Chrome using Puppeteer
 #https://tutorialzine.com/2017/08/automating-google-chrome-with-node-js
 #https://developers.google.com/web/tools/puppeteer
 
-# /private/etc/rc.common has a function to check if network is up, I would like to reuse it here
+# /private/etc/rc.common has a function to check if a network is up, I would like to reuse it here
 
 PrintLog()
 {
     local message=$1
 # We can use logger to log to syslog then output the same message to standard out with UTC Timestamps.
-# logger only output at current timezone.
+# logger only outputs at current timezone.
 
     logger -i "$message"
     echo "$(date -u):$whoami[$$] $message" 
@@ -36,7 +35,7 @@ PrintLog()
 CleanUpExit ()
 {
     PrintLog "We should do something interesting here."
-    PrintLog "Good bye."
+    PrintLog "Goodbye."
     exit 1
 
 }
@@ -48,7 +47,7 @@ CheckForNetwork()
     if [[ -z "${NETWORKUP:=}" ]]; then
         test=$(ifconfig -a inet 2>/dev/null | sed -n -e '/127.0.0.1/d' -e '/0.0.0.0/d' -e '/inet/p' | wc -l)
         if [[ "${test}" -gt 0 ]]; then
-           PrintLog "Network is up."
+            PrintLog "Network is up."
         else
             PrintLog "Network is down."
             CleanUpExit
@@ -67,10 +66,10 @@ LocateMountedApp()
     done
 
     if [[ ${#mountPoints[@]} -gt 1 ]]; then
-        PrintLog "Mutliple versions of Overflow.app detected."
+        PrintLog "Multiple versions of Overflow.app detected."
     fi
     # Should we perform a check in here against each Volume found with the app to see if version is greater than the app is installed and go with the higher version?
-    # We should perform a regex against the version numbers to determine if download app is newer than the installed version (if the app is installed)
+    # We should perform a regex against the version numbers to determine if the download app is newer than the installed version (if the app is installed)
 
     if [[ -d /Applications/Overflow.app ]]; then
         PrintLog "Installed App Version: $(defaults read /Applications/Overflow.app/Contents/Info.plist CFBundleVersion)"
@@ -95,7 +94,7 @@ LocateMountedApp()
 
 whoami=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
 
-# Create a log function that handle messages for logger
+# Create a log function that handles messages for logger
 PrintLog "$whoami is currently logged in."
 
 # Do we re-attempt file download if the download fails or give up one try and declare failure?
@@ -111,7 +110,7 @@ else
 fi
 
 PrintLog "Attaching downloaded file."
-# How do when know where the dmg file is attached, will the volume always have the same name?
+# How do we know where the dmg file is attached, will the volume always have the same name?
 if hdiutil attach /tmp/download.dmg --nobrowse --quiet; then
     PrintLog "Attach the Overflow dmg file."
 else
@@ -125,17 +124,17 @@ fi
 LocateMountedApp
 
 # Let's check if the application is still running before terminating it
-# If we are performing a fresh install are user preferences or licensing preferences stored in the application file?
+# If we are performing a fresh install, are user preferences or licensing preferences stored in the application file?
 # Let's confirm that the application actually quits
 while [[ $(pgrep "Overflow") ]]; do
     PrintLog "Terminating pid $(pgrep Overflow)"
     pkill "Overflow"
 done
 
-# Check if the app is already install, delete the previous version prior to installation
+# Check if the app is already install, delete the previous version before installation
 # Should place the application name as a variable
 # Should we consider different error codes for each exit status?
-PrintLog "Removing previous application installation"
+PrintLog "Removing previous application installation."
 if [[ -d /Applications/Overflow.app ]]; do
     if rm -fr /Applications/Overflow.app; then
         PrintLog "Failed to remove previous installation."
@@ -144,7 +143,7 @@ if [[ -d /Applications/Overflow.app ]]; do
 fi
 
 # Copy the new app version to the Application folder
-# Overflow will prompt you to install it in the /Applications folder if you install it else where
+# Overflow will prompt you to install it in the /Applications folder if you install it elsewhere
 # should we use rsync, so we can resume if the file copy get interrupted?
 
 if cp -R $mountPOints/Overflow.app /Applications/; then
