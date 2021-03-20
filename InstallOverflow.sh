@@ -127,26 +127,54 @@ LocateMountedApp
 # Let's check if the application is still running before terminating it
 # If we are performing a fresh install are user preferences or licensing preferences stored in the application file?
 # Let's confirm that the application actually quits
-echo "$(date -u): closing application "
-pkill "Overflow"
+while [[ $(pgrep "Overflow") ]]; do
+    PrintLog "Terminating pid $(pgrep Overflow)"
+    pkill "Overflow"
+done
 
 # Check if the app is already install, delete the previous version prior to installation
-echo "$(date -u): removing application "
-rm -fr /Applications/Overflow.app
+# Should place the application name as a variable
+# Should we consider different error codes for each exit status?
+PrintLog "Removing previous application installation"
+if [[ -d /Applications/Overflow.app ]]; do
+    if rm -fr /Applications/Overflow.app; then
+        PrintLog "Failed to remove previous installation."
+        CleanUpExit
+    fi
+fi
 
 # Copy the new app version to the Application folder
 # Overflow will prompt you to install it in the /Applications folder if you install it else where
-echo "$(date -u): copying application"
-cp -R $mountPOints/Overflow.app /Applications/
+# should we use rsync, so we can resume if the file copy get interrupted?
+
+if cp -R $mountPOints/Overflow.app /Applications/; then
+    PrintLog "Copied Overflow.app to /Applications folder."
+else
+    PrintLog "Failed to copy Overflow.app to /Applications folder."
+    CleanUpExit
+fi
 
 # Detach the Volume
-echo "$(date -u): detaching downloaded file"
-hdiutil detach /Volumes/Overflow
+
+for ((i = 0; $i < ${#mountPoints[@]}; i++)); do
+    if hdiutil detach ${mountPoints[$i]}; then
+        PrintLog "Detaching mount point: ${mountPoints[$i]}"
+    else
+        PrintLog "Failed to detach mount point : ${mountPoints[$i]}"
+    fi
+done
 
 # Change permissions on the app bundle -- Note, the installation still need root access to install the app into the application folder.
-echo "$(date -u): providing $whoami with access to /Applications/Overflow.app"
-chown -R $whoami:staff /Applications/Overflow.app
+if chown -R $whoami:staff /Applications/Overflow.app; then
+    PrintLog "Providing $whoami with access to /Applications/Overflow.app"
+else
+    PrintLog "Failed to provide $whoami with access to /Applications/Overflow.app"
+fi
+# Remove quarantine flag, this might randomly return an error
+if xattr -r -d com.apple.quarantine /Applications/Overflow.app; then
+    PrintLog "Removed quarantine flag on Overflow.app"
+else
+    PrintLog "Unable to remove the quarantine flag on Overflow.app"
+fi
 
-# Remove quarantine flag
-echo "$(date -u): removing quarantine flg on Overflow.app if its set"
-xattr -r -d com.apple.quarantine /Applications/Overflow.app
+PrintLog "Installation Successful."
