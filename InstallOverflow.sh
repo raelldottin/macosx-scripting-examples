@@ -4,8 +4,7 @@
 
 # Or we can use overflow cask in Homebrew
 # brew install --cask protoio-overflow
-#
-
+# https://raw.githubusercontent.com/Homebrew/install/master/install.sh -- we can use this script for inspiration
 
 # Todo List:
 # Figure out how to determine the download link dynamically
@@ -15,12 +14,8 @@
 # Script Requirements: bash, curl, hdiutil, pkill, rm, cp, chown, xattr, python (no specific version required), (root privileges)
 # we can write a routine to make sure the target system has the required utilities before beginning
 
-
-#We can automate the file download using Google Chrome using Puppeteer
-#https://tutorialzine.com/2017/08/automating-google-chrome-with-node-js
-#https://developers.google.com/web/tools/puppeteer
-
-# /private/etc/rc.common has a function to check if a network is up, I would like to reuse it here
+# Global variables
+mountPoints=()
 
 PrintLog()
 {
@@ -32,14 +27,27 @@ PrintLog()
     echo "$(date -u):$whoami[$$] $message" 
 }
 
+DetachVolumes()
+{
+    for ((i = 0; $i < ${#mountPoints[@]}; i++)); do
+        if hdiutil detach $(echo ${mountPoints[$i]}|sed -r 's#([^/].*[^/])/[^/].*#\1#'); then
+            PrintLog "Detaching mount point: $(echo ${mountPoints[$i]}|sed -r 's#([^/].*[^/])/[^/].*#\1#')"
+        else
+            PrintLog "Failed to detach mount point : $(echo ${mountPoints[$i]}|sed -r 's#([^/].*[^/])/[^/].*#\1#')"
+        fi
+    done
+}
+
 CleanUpExit ()
 {
+    DetachVolumes
     PrintLog "We should do something interesting here."
     PrintLog "Goodbye."
     exit 1
 
 }
 
+# /private/etc/rc.common has a function to check if a network is up, I would like to reuse it here
 CheckForNetwork()
 {
     local test
@@ -58,18 +66,21 @@ CheckForNetwork()
 LocateMountedApp()
 {
     OLDIFS=$IFS
-    set +m
-    shopt -s lastpipe
-    mountPoints=()
-    find /Volumes -name "Overflow.app" -print0 | while IFS=  read -r -d $'\0'; do
-        mountPoints+=("$REPLY")
+
+    PrintLog "Searching for mountpoints."
+
+    while IFS=  read -r -d $'\0'; do
+        mountPoints+=("$REPLY"); 
+    done < <(find /Volumes -name "Overflow.app" -print0)
+
+    for ((i = 0; $i < ${#mountPoints[@]}; i++)); do
+            PrintLog "Mount point: ${mountPoints[$i]}"
     done
 
     if [[ ${#mountPoints[@]} -gt 1 ]]; then
-        PrintLog "Multiple versions of Overflow.app detected."
+        PrintLog "Multiple versions of Overflow.app mount points detected."
     fi
-    # Should we perform a check in here against each Volume found with the app to see if version is greater than the app is installed and go with the higher version?
-    # We should perform a regex against the version numbers to determine if the download app is newer than the installed version (if the app is installed)
+    # This only check if the app version is already installed. We should perform a regex against the version numbers to determine if the download app is newer than the installed version.
 
     if [[ -d /Applications/Overflow.app ]]; then
         PrintLog "Installed App Version: $(defaults read /Applications/Overflow.app/Contents/Info.plist CFBundleVersion)"
@@ -77,8 +88,9 @@ LocateMountedApp()
             PrintLog "Downloaded App Version: $(defaults read "${mountPoints[$i]}/Contents/Info.plist" CFBundleVersion)"
             if [[ $(defaults read "${mountPoints[$i]}/Contents/Info.plist" CFBundleVersion) == $(defaults read /Applications/Overflow.app/Contents/Info.plist CFBundleVersion) ]]; then
                 PrintLog "Overflow app version $(defaults read /Applications/Overflow.app/Contents/Info.plist CFBundleVersion) is already installed."
-                local delete=${mountPoints[$i]}
-                mountPoints=( "${mountPoints[@]/$delete}" )
+                PrintLog "Unsetting element ${mountPoints[$i]}"
+                unset 'mountPoints[$i]'
+                # maybe it's a better idea to unset the variable
             fi
         done
 
@@ -92,7 +104,7 @@ LocateMountedApp()
 }
 
 
-whoami=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+whoami=$(stat -f %Su /dev/console)
 
 # Create a log function that handles messages for logger
 PrintLog "$whoami is currently logged in."
@@ -111,7 +123,7 @@ fi
 
 PrintLog "Attaching downloaded file."
 # How do we know where the dmg file is attached, will the volume always have the same name?
-if hdiutil attach /tmp/download.dmg --nobrowse --quiet; then
+if hdiutil attach /tmp/download.dmg -nobrowse -quiet; then
     PrintLog "Attach the Overflow dmg file."
 else
     PrintLog "Failed to attached dmg file"
@@ -134,9 +146,12 @@ done
 # Check if the app is already install, delete the previous version before installation
 # Should place the application name as a variable
 # Should we consider different error codes for each exit status?
-PrintLog "Removing previous application installation."
-if [[ -d /Applications/Overflow.app ]]; do
+
+if [[ -d "/Applications/Overflow.app" ]]; then
+    PrintLog "Removing previous application installation."  
     if rm -fr /Applications/Overflow.app; then
+        PrintLog "Successfully removed the prevous installation."
+    else
         PrintLog "Failed to remove previous installation."
         CleanUpExit
     fi
@@ -146,22 +161,16 @@ fi
 # Overflow will prompt you to install it in the /Applications folder if you install it elsewhere
 # should we use rsync, so we can resume if the file copy get interrupted?
 
-if cp -R $mountPOints/Overflow.app /Applications/; then
+if cp -R ${mountPoints[0]} /Applications/; then
     PrintLog "Copied Overflow.app to /Applications folder."
 else
-    PrintLog "Failed to copy Overflow.app to /Applications folder."
+    PrintLog "Failed to copy Overflow.app from ${mountPoints[0]} /Applications folder."
+    PrintLog "Please run this script as root."
     CleanUpExit
 fi
 
 # Detach the Volume
-
-for ((i = 0; $i < ${#mountPoints[@]}; i++)); do
-    if hdiutil detach ${mountPoints[$i]}; then
-        PrintLog "Detaching mount point: ${mountPoints[$i]}"
-    else
-        PrintLog "Failed to detach mount point : ${mountPoints[$i]}"
-    fi
-done
+DetachVolumes
 
 # Change permissions on the app bundle -- Note, the installation still need root access to install the app into the application folder.
 if chown -R $whoami:staff /Applications/Overflow.app; then
