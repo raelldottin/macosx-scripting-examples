@@ -8,11 +8,10 @@
 
 # Todo List:
 # Figure out how to determine the download link dynamically
-# Add error checking for each command with failbacks or clean up routines [x]
+# Add error checking for each command with fallback or clean up routines [x]
 # Include logging of the installation process [x]
 
 # Script Requirements: bash, curl, hdiutil, pkill, rm, cp, chown, xattr, (root or admin privileges to copy Overflow.app into the Application folder)
-# we can write a routine to make sure the target system has the required utilities before beginning
 
 #Set command search path
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/libexec:/System/Library/CoreServices; export PATH
@@ -174,8 +173,12 @@ LocateMountedApp
 # If we are performing a fresh install, are user preferences or licensing preferences stored in the application file?
 # Let's confirm that the application actually quits
 while [[ $(pgrep "Overflow") ]]; do
-    PrintLog "Terminating pid $(pgrep Overflow)"
-    $PKILL_BIN "Overflow"
+    if $PKILL_BIN "Overflow"; then
+        PrintLog "Successfully terminated Overflow.app."
+    else
+        PrintLog "Failed to terminate Overflow.app"
+    fi
+    sleep 1
 done
 
 # Check if the app is already install, delete the previous version before installation
