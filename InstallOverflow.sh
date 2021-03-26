@@ -2,7 +2,7 @@
 
 # A quick prototype for automating overflow software installs on macOS
 
-# Homebrew is the easiest option for this task, secur
+# Homebrew is the easiest option for this task:
 # brew install --cask protoio-overflow
 # https://raw.githubusercontent.com/Homebrew/install/master/install.sh
 
@@ -14,7 +14,7 @@
 # Script Requirements: bash, curl, hdiutil, pkill, rm, cp, chown, xattr, (root or admin privileges to copy Overflow.app into the Application folder)
 
 #Set command search path
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/libexec:/System/Library/CoreServices; export PATH
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/libexec:/System/Library/CoreServices; export $PATH
 CURL_BIN=/usr/bin/curl
 HDIUTIL_BIN=/usr/bin/hdiutil
 PKILL_BIN=/usr/bin/pkill
@@ -144,6 +144,14 @@ LocateMountedApp()
 
 whoami=$(/usr/bin/stat -f %Su /dev/console)
 PrintLog "$whoami is currently logged in."
+
+if [[ $(whoami) != "root" ]]; then
+    if groups $(whoami) | grep -q -w admin; then
+        PrintLog "$(whoami) has administrative rights. Proceeding with installation."
+    else
+        PrintLog "$(whoami) does not have administrative privileges Proceeding with installation."
+        CleanUpExit
+    fi
 
 # Do we re-attempt file download if the download fails or give up one try and declare failure?
 
