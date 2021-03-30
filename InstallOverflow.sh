@@ -7,14 +7,14 @@
 # https://raw.githubusercontent.com/Homebrew/install/master/install.sh
 
 # Todo List:
-# Figure out how to determine the download link dynamically
+# Figure out how to determine the download link dynamically [x]
 # Add error checking for each command with fallback or clean up routines [x]
 # Include logging of the installation process [x]
 
 # Script Requirements: bash, curl, hdiutil, pkill, rm, cp, chown, xattr, (root or admin privileges to copy Overflow.app into the Application folder)
 
 #Set command search path
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/libexec:/System/Library/CoreServices; export $PATH
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/libexec:/System/Library/CoreServices; export PATH
 CURL_BIN=/usr/bin/curl
 HDIUTIL_BIN=/usr/bin/hdiutil
 PKILL_BIN=/usr/bin/pkill
@@ -37,7 +37,7 @@ mountPoints=()
 appName="Overflow.app"
 installPath="/Applications"
 downloadFile="/tmp/download.dmg"
-downloadURL="https://app-updates.overflow.io/packages/updates/osx_64/01800abc7f858990a2f4267e811d430c48f9469b/Overflow-1.16.2.dmg"
+downloadURL=$(curl -s "https://overflow.io/download/mac/" |grep -Eo "\"[^\"]*"|grep -Eo '(http|https)://[^/"]+.*[^\"].dmg')
 
 PrintLog()
 {
@@ -113,9 +113,10 @@ LocateMountedApp()
         mountPoints+=("$REPLY"); 
     done < <(find /Volumes -name "Overflow.app" -print0)
 
-    for ((i = 0; $i < ${#mountPoints[@]}; i++)); do
-            PrintLog "Mount point: ${mountPoints[$i]}"
-    done
+    # Added a debug flag and execute the for loop below if its set.
+    #for ((i = 0; $i < ${#mountPoints[@]}; i++)); do
+    #        PrintLog "Mount point: ${mountPoints[$i]}"
+    #done
 
     if [[ ${#mountPoints[@]} -gt 1 ]]; then
         PrintLog "Multiple versions of Overflow.app mount points detected."
@@ -152,6 +153,7 @@ if [[ $(whoami) != "root" ]]; then
         PrintLog "$(whoami) does not have administrative privileges Proceeding with installation."
         CleanUpExit
     fi
+fi
 
 # Do we re-attempt file download if the download fails or give up one try and declare failure?
 
